@@ -1,10 +1,9 @@
 /*
- * Copyright (c) 2014-2023 Bjoern Kimminich & the OWASP Juice Shop contributors.
+ * Copyright (c) 2014-2024 Bjoern Kimminich & the OWASP Juice Shop contributors.
  * SPDX-License-Identifier: MIT
  */
 
-// eslint-disable-next-line @typescript-eslint/prefer-ts-expect-error
-// @ts-ignore no typescript definitions for z85 :(
+// @ts-expect-error FIXME no typescript definitions for z85 :(
 import z85 from 'z85'
 import chai = require('chai')
 const expect = chai.expect

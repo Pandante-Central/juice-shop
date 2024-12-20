@@ -1,13 +1,13 @@
 /*
- * Copyright (c) 2014-2023 Bjoern Kimminich & the OWASP Juice Shop contributors.
+ * Copyright (c) 2014-2024 Bjoern Kimminich & the OWASP Juice Shop contributors.
  * SPDX-License-Identifier: MIT
  */
 
 import fs from 'fs/promises'
-import { Request, Response, NextFunction } from 'express'
-import { User } from '../data/types'
+import { type Request, type Response, type NextFunction } from 'express'
+import { type User } from '../data/types'
 import { UserModel } from '../models/user'
-import jwt, { JwtPayload, VerifyErrors } from 'jsonwebtoken'
+import jwt, { type JwtPayload, type VerifyErrors } from 'jsonwebtoken'
 import challengeUtils = require('../lib/challengeUtils')
 import logger from '../lib/logger'
 import config from 'config'
@@ -18,8 +18,7 @@ import { Bot } from 'juicy-chat-bot'
 import validateChatBot from '../lib/startup/validateChatBot'
 import * as security from '../lib/insecurity'
 import * as botUtils from '../lib/botUtils'
-
-const challenges = require('../data/datacache').challenges
+import { challenges } from '../data/datacache'
 
 let trainingFile = config.get<string>('application.chatBot.trainingData')
 let testCommand: string
@@ -49,7 +48,7 @@ export async function initialize () {
 void initialize()
 
 async function processQuery (user: User, req: Request, res: Response, next: NextFunction) {
-  if (!bot) {
+  if (bot == null) {
     res.status(503).send()
     return
   }
@@ -96,7 +95,9 @@ async function processQuery (user: User, req: Request, res: Response, next: Next
   try {
     const response = await bot.respond(req.body.query, `${user.id}`)
     if (response.action === 'function') {
+      // @ts-expect-error FIXME unclean usage of any type as index
       if (response.handler && botUtils[response.handler]) {
+        // @ts-expect-error FIXME unclean usage of any type as index
         res.status(200).json(await botUtils[response.handler](req.body.query, user))
       } else {
         res.status(200).json({
@@ -125,12 +126,12 @@ async function processQuery (user: User, req: Request, res: Response, next: Next
 }
 
 async function setUserName (user: User, req: Request, res: Response) {
-  if (!bot) {
+  if (bot == null) {
     return
   }
   try {
     const userModel = await UserModel.findByPk(user.id)
-    if (!userModel) {
+    if (userModel == null) {
       res.status(401).json({
         status: 'error',
         error: 'Unknown user'
@@ -140,6 +141,7 @@ async function setUserName (user: User, req: Request, res: Response) {
     const updatedUser = await userModel.update({ username: req.body.query })
     const updatedUserResponse = utils.queryResultToJson(updatedUser)
     const updatedToken = security.authorize(updatedUserResponse)
+    // @ts-expect-error FIXME some properties missing in updatedUserResponse
     security.authenticatedUsers.put(updatedToken, updatedUserResponse)
     bot.addUser(`${updatedUser.id}`, req.body.query)
     res.status(200).json({
@@ -155,10 +157,10 @@ async function setUserName (user: User, req: Request, res: Response) {
 
 export const status = function status () {
   return async (req: Request, res: Response, next: NextFunction) => {
-    if (!bot) {
+    if (bot == null) {
       res.status(200).json({
         status: false,
-        body: `${config.get('application.chatBot.name')} isn't ready at the moment, please wait while I set things up`
+        body: `${config.get<string>('application.chatBot.name')} isn't ready at the moment, please wait while I set things up`
       })
       return
     }
@@ -166,13 +168,13 @@ export const status = function status () {
     if (!token) {
       res.status(200).json({
         status: bot.training.state,
-        body: `Hi, I can't recognize you. Sign in to talk to ${config.get('application.chatBot.name')}`
+        body: `Hi, I can't recognize you. Sign in to talk to ${config.get<string>('application.chatBot.name')}`
       })
       return
     }
 
     const user = await getUserFromJwt(token)
-    if (!user) {
+    if (user == null) {
       res.status(401).json({
         error: 'Unauthenticated user'
       })
@@ -193,7 +195,7 @@ export const status = function status () {
       bot.addUser(`${user.id}`, username)
       res.status(200).json({
         status: bot.training.state,
-        body: bot.training.state ? bot.greet(`${user.id}`) : `${config.get('application.chatBot.name')} isn't ready at the moment, please wait while I set things up`
+        body: bot.training.state ? bot.greet(`${user.id}`) : `${config.get<string>('application.chatBot.name')} isn't ready at the moment, please wait while I set things up`
       })
     } catch (err) {
       next(new Error('Blocked illegal activity by ' + req.socket.remoteAddress))
@@ -203,10 +205,10 @@ export const status = function status () {
 
 module.exports.process = function respond () {
   return async (req: Request, res: Response, next: NextFunction) => {
-    if (!bot) {
+    if (bot == null) {
       res.status(200).json({
         action: 'response',
-        body: `${config.get('application.chatBot.name')} isn't ready at the moment, please wait while I set things up`
+        body: `${config.get<string>('application.chatBot.name')} isn't ready at the moment, please wait while I set things up`
       })
     }
     const token = req.cookies.token || utils.jwtFrom(req)
@@ -218,7 +220,7 @@ module.exports.process = function respond () {
     }
 
     const user = await getUserFromJwt(token)
-    if (!user) {
+    if (user == null) {
       res.status(401).json({
         error: 'Unauthenticated user'
       })
